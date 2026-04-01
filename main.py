@@ -5,6 +5,7 @@ import keyboard
 from cflib.utils import uri_helper
 
 from crazyflie_client import CrazyflieClient
+from crazyflie_telemetry import CrazyflieTelemetry
 from control import Goal, PIDPositionController
 from vicon_motion import ViconMotionClient
 from flight_logger import FlightLogger
@@ -36,6 +37,7 @@ def main() -> None:
     CrazyflieClient.init_drivers()
 
     cf = CrazyflieClient(URI)
+    telemetry_client = CrazyflieTelemetry(cf.cf)
     mocap = ViconMotionClient(HOST_NAME, MOCAP_SYSTEM_TYPE)
     controller = PIDPositionController(window_size=TIME_SIZE)
     logger = FlightLogger()
@@ -45,6 +47,8 @@ def main() -> None:
         print('Timed out waiting for Crazyflie connection')
         cf.close()
         return
+
+    telemetry_client.start()
 
     start_pose = mocap.get_pose(DRONE_OBJECT_NAME)
     start_time = time.time()
@@ -77,19 +81,17 @@ def main() -> None:
                 goal_z=goal.z,
             )
 
+            telemetry = telemetry_client.get_telemetry()
+
             logger.log_sample(
                 runtime=runtime,
                 drone_pose=drone_pose,
                 goal=goal,
                 command=command,
                 ground_pose=ground_pose,
+                telemetry=telemetry,
             )
 
-            print(
-                f'z_pos: {drone_pose.z:.3f}, '
-                f'z_goal: {goal.z:.3f}, '
-                f'thrust: {command.thrust}'
-            )
             cf.send_setpoint(command.roll, command.pitch, 0.0, command.thrust)
 
     except KeyboardInterrupt:
@@ -97,6 +99,7 @@ def main() -> None:
     finally:
         print('\nKill button pressed, shutting down')
         logger.save_all()
+        telemetry_client.stop()
         cf.close()
 
 

@@ -18,6 +18,10 @@ class CrazyflieClient:
         self._cf.connection_failed.add_callback(self._connection_failed)
         self._cf.connection_lost.add_callback(self._connection_lost)
 
+    @property
+    def cf(self) -> Crazyflie:
+        return self._cf
+
     @staticmethod
     def init_drivers() -> None:
         cflib.crtp.init_drivers()

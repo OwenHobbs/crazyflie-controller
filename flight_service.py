@@ -22,20 +22,18 @@ class FlightService:
     def __init__(
         self,
         crazyflie_uri: str,
-        mocap_hostname: str,
-        mocap_system_type: str,
         drone_object_name: str,
+        mocap_client: ViconMotionClient,
+        log_output_dir: str,
         yaw_rate_command: float = 0.0,
-        ground_object_name: str | None = None,
     ):
         self._cf_client = CrazyflieClient(uri_helper.uri_from_env(default=crazyflie_uri))
-        self._mocap_client = ViconMotionClient(mocap_hostname, mocap_system_type)
+        self._mocap_client = mocap_client
         self._controller = PIDPositionController()
-        self._logger = FlightLogger()
+        self._logger = FlightLogger(base_output_dir=log_output_dir)
         self._drone_object_name = drone_object_name
         self._telemetry_client = CrazyflieTelemetry(self._cf_client.cf)
         self._yaw_rate_command = yaw_rate_command
-        self._ground_object_name = ground_object_name
 
         self._goal_lock = threading.Lock()
         self._state_lock = threading.Lock()
@@ -67,7 +65,7 @@ class FlightService:
 
         self._stop_event.clear()
         self._start_time = time.time()
-        self._thread = threading.Thread(target=self._run_loop, name='FlightServiceLoop', daemon=True)
+        self._thread = threading.Thread(target=self._run_loop, name=self._drone_object_name, daemon=True)
         self._thread.start()
         self._started = True
 
@@ -155,16 +153,11 @@ class FlightService:
             if self._telemetry_client is not None:
                 telemetry = self._telemetry_client.get_telemetry()
 
-            ground_pose = None
-            if self._ground_object_name is not None:
-                ground_pose = frame.get(self._ground_object_name)
-
             self._logger.log_sample(
                 runtime=runtime,
                 drone_pose=drone_pose,
                 goal=goal,
                 command=command,
-                ground_pose=ground_pose,
                 telemetry=telemetry,
             )
 

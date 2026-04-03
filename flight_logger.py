@@ -25,7 +25,6 @@ class FlightLogger:
         drone_pose,
         goal,
         command,
-        ground_pose: Optional[object] = None,
         telemetry: Optional[object] = None,
     ) -> None:
         # TODO: converting to dictionary may be unnecessary?
@@ -43,9 +42,6 @@ class FlightLogger:
             "roll_cmd": float(command.roll),
             "pitch_cmd": float(command.pitch),
             "thrust_cmd": int(command.thrust),
-            "ground_x": float(ground_pose.x) if ground_pose is not None else "",
-            "ground_y": float(ground_pose.y) if ground_pose is not None else "",
-            "ground_z": float(ground_pose.z) if ground_pose is not None else "",
             "cf_host_time": telemetry_dict.get("host_time", ""),
             "cf_time_ms": telemetry_dict.get("cf_time_ms", ""),
             "cf_vbat": telemetry_dict.get("vbat", ""),

@@ -6,7 +6,7 @@ from typing import Optional
 
 from cflib.utils import uri_helper
 
-from control import ControlCommand, Goal, PIDPositionController
+from flight_control import ControlCommand, Goal, PIDPositionController
 from crazyflie_client import CrazyflieClient
 from crazyflie_telemetry import CrazyflieTelemetry
 from flight_logger import FlightLogger
@@ -25,7 +25,6 @@ class FlightService:
         drone_object_name: str,
         mocap_client: ViconMotionClient,
         log_output_dir: str,
-        yaw_rate_command: float = 0.0,
     ):
         self._cf_client = CrazyflieClient(uri_helper.uri_from_env(default=crazyflie_uri))
         self._mocap_client = mocap_client
@@ -33,7 +32,6 @@ class FlightService:
         self._logger = FlightLogger(base_output_dir=log_output_dir)
         self._drone_object_name = drone_object_name
         self._telemetry_client = CrazyflieTelemetry(self._cf_client.cf)
-        self._yaw_rate_command = yaw_rate_command
 
         self._goal_lock = threading.Lock()
         self._state_lock = threading.Lock()
@@ -54,7 +52,7 @@ class FlightService:
             return
 
         self._controller.reset()
-        self._last_seen_frame_id: int = 0
+        self._last_seen_frame_id = 0
 
         self._cf_client.open_link()
         if not self._cf_client.wait_until_connected(timeout=10.0):
@@ -143,22 +141,18 @@ class FlightService:
                 goal = self._goal
 
             if goal is None:
-                self._cf_client.send_setpoint(0.0, 0.0, self._yaw_rate_command, 0)
+                self._cf_client.send_setpoint(0.0, 0.0, 0.0, 0)
                 continue
 
             self._controller.add_sample(
                 x=drone_pose.x,
                 y=drone_pose.y,
                 z=drone_pose.z,
+                yaw=drone_pose.yaw,
                 timestamp=drone_pose.timestamp,
             )
 
-            command = self._controller.compute_command(
-                current_yaw=drone_pose.yaw,
-                goal_x=goal.x,
-                goal_y=goal.y,
-                goal_z=goal.z,
-            )
+            command = self._controller.compute_command(goal)
 
             telemetry = self._telemetry_client.get_telemetry() if self._telemetry_client is not None else None
 
@@ -173,7 +167,7 @@ class FlightService:
             self._cf_client.send_setpoint(
                 command.roll,
                 command.pitch,
-                self._yaw_rate_command,
+                command.yaw_rate,
                 command.thrust,
             )
 

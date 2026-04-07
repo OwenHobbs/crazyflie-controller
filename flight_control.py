@@ -7,6 +7,7 @@ import numpy as np
 """
 This module provides flight control functionality for the Crazyflie drone,
 including PID-based position and heading control using data from Vicon motion capture.
+Exports Goal, ControlCommand, and PIDPositionController for use by flight_service.py and main.py.
 """
 
 # Dataclass for representing a goal position and heading

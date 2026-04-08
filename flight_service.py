@@ -12,13 +12,20 @@ from crazyflie_telemetry import CrazyflieTelemetry
 from flight_logger import FlightLogger
 from vicon_motion import ViconMotionClient
 
+"""
+This module provides the FlightService class that manages the background control loop
+for the Crazyflie drone. It integrates with flight_control, crazyflie_client, vicon_motion,
+and flight_logger modules to coordinate mocap data, PID control, and command execution.
+"""
 
+# Service class for managing the drone control loop
 class FlightService:
     """Owns the background mocap/control/send loop.
 
     Main (or any other thread) only needs to call set_goal().
     """
 
+    # Initialize the flight service with drone and mocap configuration
     def __init__(
         self,
         crazyflie_uri: str,
@@ -46,6 +53,7 @@ class FlightService:
         self._stop_event = threading.Event()
         self._started = False
 
+    # Start the flight service and background control loop
     def start(self) -> None:
         print("Starting flight service...")
         if self._started:
@@ -69,6 +77,7 @@ class FlightService:
         self._thread.start()
         self._started = True
 
+    # Stop the flight service and close connections
     def stop(self) -> None:
         self._stop_event.set()
         if self._thread is not None:
@@ -83,38 +92,46 @@ class FlightService:
             self._cf_client.close()
             self._started = False
 
+    # Set a new control goal for the drone
     def set_goal(self, goal: Goal) -> None:
         with self._goal_lock:
             self._goal = goal
 
+    # Clear the current control goal
     def clear_goal(self) -> None:
         with self._goal_lock:
             self._goal = None
 
+    # Get the current control goal
     def get_goal(self) -> Optional[Goal]:
         with self._goal_lock:
             return self._goal
 
+    # Get the latest motion capture frame
     def get_latest_frame(self) -> dict:
         with self._state_lock:
             if self._latest_frame is None:
                 return {}
             return dict(self._latest_frame)
 
+    # Get the latest pose of a specific rigid body
     def get_latest_pose(self, rigid_body_name: str):
         with self._state_lock:
             if self._latest_frame is None:
                 return None
             return self._latest_frame.get(rigid_body_name)
 
+    # Get the elapsed runtime since the service started
     def get_runtime(self) -> float:
         with self._state_lock:
             return self._latest_runtime
 
+    # Get the last control command sent to the drone
     def get_last_command(self) -> Optional[ControlCommand]:
         with self._state_lock:
             return self._last_command
 
+    # Background loop that processes mocap data and sends control commands
     def _run_loop(self) -> None:
         while not self._stop_event.is_set():
             result = self._mocap_client.wait_for_new_frame(

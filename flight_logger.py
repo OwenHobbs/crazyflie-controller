@@ -8,10 +8,17 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
+"""
+This module provides flight data logging and visualization functionality.
+Saves flight logs to CSV and generates plots of position, control commands, and drone telemetry.
+Used by flight_service.py to record all flight data after each control cycle.
+"""
 
+# Class for logging and visualizing flight data
 class FlightLogger:
     """Logs flight data, shows optional live plots, and saves files after the run."""
 
+    # Initialize the flight logger with output directory
     def __init__(self, base_output_dir: str = "flight_logs", run_timestamp: str | None = None):
         timestamp = run_timestamp or datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         self.base_output_dir = Path(base_output_dir)
@@ -19,6 +26,7 @@ class FlightLogger:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.rows: list[dict] = []
 
+    # Log a single flight data sample
     def log_sample(
         self,
         runtime,
@@ -59,6 +67,7 @@ class FlightLogger:
         }
         self.rows.append(row)
 
+    # Save all logged data to CSV and generate plots
     def save_all(self) -> None:
         if not self.rows:
             print(f"FlightLogger: no samples to save in {self.output_dir.resolve()}")
@@ -70,6 +79,7 @@ class FlightLogger:
         self._save_crazyflie_telemetry_plot()
         print(f"FlightLogger: saved {len(self.rows)} samples to {self.output_dir.resolve()}")
 
+    # Save flight data to a CSV file
     def _save_csv(self) -> None:
         csv_path = self.output_dir / "flight_log.csv"
         fieldnames = list(self.rows[0].keys())
@@ -79,6 +89,7 @@ class FlightLogger:
             writer.writeheader()
             writer.writerows(self.rows)
 
+    # Generate and save position vs goal plot
     def _save_position_plot(self) -> None:
         t = np.asarray([row["runtime"] for row in self.rows], dtype=float)
         drone_heading_deg_wrapped = np.rad2deg(np.asarray([row["drone_yaw"] for row in self.rows], dtype=float))
@@ -118,6 +129,7 @@ class FlightLogger:
         fig.savefig(self.output_dir / "position_vs_goal.png", dpi=150)
         plt.close(fig)
 
+    # Generate and save control command plot
     def _save_command_plot(self) -> None:
         t = np.asarray([row["runtime"] for row in self.rows], dtype=float)
 
@@ -145,6 +157,7 @@ class FlightLogger:
         fig.savefig(self.output_dir / "commands.png", dpi=150)
         plt.close(fig)
 
+    # Generate and save drone telemetry plot
     def _save_crazyflie_telemetry_plot(self) -> None:
         t = np.asarray([row["runtime"] for row in self.rows], dtype=float)
         vbat = np.asarray([self._num(row["cf_vbat"]) for row in self.rows], dtype=float)
@@ -215,16 +228,19 @@ class FlightLogger:
         fig.savefig(self.output_dir / "crazyflie_telemetry.png", dpi=150)
         plt.close(fig)
 
+    # Convert value to float, handling empty or None values
     @staticmethod
     def _num(value):
         if value == "" or value is None:
             return float("nan")
         return float(value)
 
+    # Unwrap angle array to handle discontinuities at 360/0 degrees
     @staticmethod
     def _unwrap_deg_array(values_deg: np.ndarray) -> np.ndarray:
         return np.rad2deg(np.unwrap(np.deg2rad(values_deg)))
 
+    # Find the nearest equivalent goal angle for each reference angle
     @staticmethod
     def _nearest_equivalent_goal_series(goal_wrapped_deg: np.ndarray, reference_unwrapped_deg: np.ndarray) -> np.ndarray:
         out = np.full_like(goal_wrapped_deg, np.nan, dtype=float)

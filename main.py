@@ -103,9 +103,10 @@ def main() -> None:
             flight_service_1.set_goal(
                 Goal(x=start_pose_1.x, y=start_pose_1.y, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=0)
             )
-            flight_service_2.set_goal(
-                Goal(x=start_pose_2.x, y=start_pose_2.y, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=0)
-            )
+            if (TWO_DRONES):
+                flight_service_2.set_goal(
+                    Goal(x=start_pose_2.x, y=start_pose_2.y, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=0)
+                )
 
             if stop_event.wait(TAKEOFF_HOLD_SECONDS):
                 break
@@ -113,9 +114,10 @@ def main() -> None:
             flight_service_1.set_goal(
                 Goal(x=start_pose_1.x, y=start_pose_1.y, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=90)
             )
-            flight_service_2.set_goal(
-                Goal(x=start_pose_2.x, y=start_pose_2.y, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=90)
-            )
+            if (TWO_DRONES):
+                flight_service_2.set_goal(
+                    Goal(x=start_pose_2.x, y=start_pose_2.y, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=90)
+                )
 
             if stop_event.wait(TAKEOFF_HOLD_SECONDS):
                 break
@@ -123,9 +125,10 @@ def main() -> None:
             flight_service_1.set_goal(
                 Goal(x=start_pose_1.x + 1.0, y=start_pose_1.y + 1.0, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=90)
             )
-            flight_service_2.set_goal(
-                Goal(x=start_pose_2.x + 1.0, y=start_pose_2.y + 1.0, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=90)
-            )
+            if (TWO_DRONES):
+                flight_service_2.set_goal(
+                    Goal(x=start_pose_2.x + 1.0, y=start_pose_2.y + 1.0, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=90)
+                )
 
             if stop_event.wait(TAKEOFF_HOLD_SECONDS):
                 break
@@ -133,9 +136,10 @@ def main() -> None:
             flight_service_1.set_goal(
                 Goal(x=start_pose_1.x + 1.0, y=start_pose_1.y + 1.0, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=0)
             )
-            flight_service_2.set_goal(
-                Goal(x=start_pose_2.x + 1.0, y=start_pose_2.y + 1.0, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=0)
-            )
+            if (TWO_DRONES):
+                flight_service_2.set_goal(
+                    Goal(x=start_pose_2.x + 1.0, y=start_pose_2.y + 1.0, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=0)
+                )
 
             if stop_event.wait(TAKEOFF_HOLD_SECONDS):
                 break

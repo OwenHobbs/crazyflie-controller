@@ -7,6 +7,7 @@ from crazyflie_client import CrazyflieClient
 from flight_control import Goal
 from flight_service import FlightService
 from vicon_motion import ViconMotionClient
+from mission_control import MissionControl
 
 """
 Main entry point for the Crazyflie drone control application.
@@ -62,6 +63,7 @@ def main() -> None:
         mocap_client=mocap_client,
         log_output_dir="flight_logs_1"
     )
+    mission_control_1 = MissionControl(flight_service=flight_service_1)
     if (TWO_DRONES):
         flight_service_2 = FlightService(
             crazyflie_uri=CRAZYFLIE_URI_2,
@@ -69,6 +71,7 @@ def main() -> None:
             mocap_client=mocap_client,
             log_output_dir="flight_logs_2"
         )
+        mission_control_2 = MissionControl(flight_service=flight_service_2)
 
     stop_event = threading.Event()
 
@@ -100,47 +103,7 @@ def main() -> None:
 
     try:
         while not stop_event.is_set():
-            flight_service_1.set_goal(
-                Goal(x=start_pose_1.x, y=start_pose_1.y, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=0)
-            )
-            if (TWO_DRONES):
-                flight_service_2.set_goal(
-                    Goal(x=start_pose_2.x, y=start_pose_2.y, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=0)
-                )
-
-            if stop_event.wait(TAKEOFF_HOLD_SECONDS):
-                break 
-
-            flight_service_1.set_goal(
-                Goal(x=start_pose_1.x, y=start_pose_1.y, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=90)
-            )
-            if (TWO_DRONES):
-                flight_service_2.set_goal(
-                    Goal(x=start_pose_2.x, y=start_pose_2.y, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=90)
-                )
-
-            if stop_event.wait(TAKEOFF_HOLD_SECONDS):
-                break
-
-            flight_service_1.set_goal(
-                Goal(x=start_pose_1.x + 1.0, y=start_pose_1.y + 1.0, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=90)
-            )
-            if (TWO_DRONES):
-                flight_service_2.set_goal(
-                    Goal(x=start_pose_2.x + 1.0, y=start_pose_2.y + 1.0, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=90)
-                )
-
-            if stop_event.wait(TAKEOFF_HOLD_SECONDS):
-                break
-
-            flight_service_1.set_goal(
-                Goal(x=start_pose_1.x + 1.0, y=start_pose_1.y + 1.0, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=0)
-            )
-            if (TWO_DRONES):
-                flight_service_2.set_goal(
-                    Goal(x=start_pose_2.x + 1.0, y=start_pose_2.y + 1.0, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=0)
-                )
-
+            mission_control_1.hover(1.0)
             if stop_event.wait(TAKEOFF_HOLD_SECONDS):
                 break
 

@@ -4,7 +4,13 @@ import math
 
 import numpy as np
 
+"""
+This module provides flight control functionality for the Crazyflie drone,
+including PID-based position and heading control using data from Vicon motion capture.
+Exports Goal, ControlCommand, and PIDPositionController for use by flight_service.py and main.py.
+"""
 
+# Dataclass for representing a goal position and heading
 @dataclass
 class Goal:
     x: float
@@ -13,6 +19,7 @@ class Goal:
     heading: float | None = None  # degrees in Vicon world frame
 
 
+# Dataclass for control commands sent to the drone
 @dataclass
 class ControlCommand:
     roll: float
@@ -21,6 +28,7 @@ class ControlCommand:
     thrust: int
 
 
+# Dataclass for PID controller gains
 @dataclass
 class PIDGains:
     kpx: float = 1.5291
@@ -43,14 +51,17 @@ class PIDGains:
     max_pitch_deg: float = 15.0
 
 
+# Class for PID-based position and heading controller
 class PIDPositionController:
     """Position + heading controller using the same basic logic as the original script."""
 
+    # Initialize the PID controller
     def __init__(self, window_size: int = 5, gains: PIDGains | None = None):
         self.window_size = window_size
         self.gains = gains or PIDGains()
         self.reset()
 
+    # Reset the controller's history
     def reset(self) -> None:
         self._x_history = deque(maxlen=self.window_size)
         self._y_history = deque(maxlen=self.window_size)
@@ -58,6 +69,7 @@ class PIDPositionController:
         self._yaw_history = deque(maxlen=self.window_size)  # radians from Vicon
         self._time_history = deque(maxlen=self.window_size)
 
+    # Add a new position sample to the history
     def add_sample(self, x: float, y: float, z: float, yaw: float, timestamp: float) -> None:
         self._x_history.append(x)
         self._y_history.append(y)
@@ -65,6 +77,7 @@ class PIDPositionController:
         self._yaw_history.append(yaw)
         self._time_history.append(timestamp)
 
+    # Compute the control command based on the goal
     def compute_command(self, goal: Goal) -> ControlCommand:
         x_pos = np.asarray(self._x_history, dtype=float)
         y_pos = np.asarray(self._y_history, dtype=float)
@@ -148,6 +161,7 @@ class PIDPositionController:
             thrust=thrust_cmd,
         )
 
+    # Safely compute the derivative of values over time
     @staticmethod
     def _safe_derivative(values: np.ndarray, times: np.ndarray) -> float:
         if len(values) < 2 or len(times) < 2:
@@ -159,10 +173,12 @@ class PIDPositionController:
 
         return float(np.mean(np.gradient(values) / dt))
 
+    # Wrap an angle to the range [-pi, pi]
     @staticmethod
     def _wrap_angle(angle: float) -> float:
         return math.atan2(math.sin(angle), math.cos(angle))
 
+    # Apply a deadband to a value in degrees
     @staticmethod
     def _apply_deadband_deg(value_deg: float, deadband_deg: float) -> float:
         if abs(value_deg) <= deadband_deg:

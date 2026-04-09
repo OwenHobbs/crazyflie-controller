@@ -8,7 +8,13 @@ from typing import Optional
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
 
+"""
+This module handles telemetry logging from the Crazyflie drone.
+Collects sensor data, power metrics, and motor commands from the flight controller.
+Used by flight_service.py to retrieve drone telemetry for each logged sample.
+"""
 
+# Dataclass for storing a snapshot of drone telemetry
 @dataclass
 class TelemetrySnapshot:
     host_time: float = 0.0
@@ -25,13 +31,16 @@ class TelemetrySnapshot:
     motor_m3: Optional[int] = None
     motor_m4: Optional[int] = None
 
+    # Convert telemetry to dictionary format
     def to_dict(self) -> dict:
         return asdict(self)
 
 
+# Class for managing Crazyflie telemetry logging
 class CrazyflieTelemetry:
     """Handles Crazyflie-side telemetry logging separate from the flight client."""
 
+    # Initialize the telemetry logger with a Crazyflie object
     def __init__(self, cf: Crazyflie, period_in_ms: int = 100):
         self._cf = cf
         self._period_in_ms = period_in_ms
@@ -39,6 +48,7 @@ class CrazyflieTelemetry:
         self._telemetry = TelemetrySnapshot()
         self._log_configs: list[LogConfig] = []
 
+    # Start telemetry logging from the drone
     def start(self) -> None:
         self.stop() # remove current log callbacks if already logging
 
@@ -68,6 +78,7 @@ class CrazyflieTelemetry:
             except Exception as exc:
                 print(f'Could not start log config {logconf.name}: {exc}')
 
+    # Stop telemetry logging
     def stop(self) -> None:
         for logconf in self._log_configs:
             try:
@@ -76,10 +87,12 @@ class CrazyflieTelemetry:
                 pass
         self._log_configs = []
 
+    # Get the latest telemetry snapshot
     def get_telemetry(self) -> TelemetrySnapshot:
         with self._telemetry_lock:
             return TelemetrySnapshot(**self._telemetry.to_dict())
 
+    # Handle incoming telemetry data from the drone
     def _on_log_data(self, timestamp: int, data: dict, logconf: LogConfig) -> None:
         del logconf
         with self._telemetry_lock:
@@ -111,6 +124,7 @@ class CrazyflieTelemetry:
             if 'motor.m4' in data:
                 self._telemetry.motor_m4 = int(data['motor.m4'])
 
+    # Handle telemetry logging errors
     @staticmethod
     def _on_log_error(logconf: LogConfig, msg: str) -> None:
         print(f'Log error in {logconf.name}: {msg}')

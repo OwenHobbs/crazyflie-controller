@@ -8,6 +8,13 @@ from flight_control import Goal
 from flight_service import FlightService
 from vicon_motion import ViconMotionClient
 
+"""
+Main entry point for the Crazyflie drone control application.
+Orchestrates the entire flight system by connecting motion capture (vicon_motion),
+drone communication (crazyflie_client), flight control (flight_service, flight_control),
+and data logging (flight_logger). Handles user input and goal sequencing.
+"""
+
 MOCAP_HOSTNAME = '128.101.167.111'
 MOCAP_SYSTEM_TYPE = 'vicon'
 
@@ -23,7 +30,7 @@ TWO_DRONES = True
 
 logging.basicConfig(level=logging.ERROR)
 
-# TODO: move this function to flight service or vicon?
+# Get the initial position of a drone from motion capture
 def get_start_pos(
         flight_service: FlightService,
         stop_event: threading.Event,
@@ -42,6 +49,7 @@ def get_start_pos(
 
     return start_pose
 
+# Main application entry point
 def main() -> None:
     CrazyflieClient.init_drivers()
 
@@ -146,5 +154,6 @@ def main() -> None:
         keyboard.unhook_all_hotkeys()
 
 
+# Run the application
 if __name__ == '__main__':
     main()

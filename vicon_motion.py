@@ -6,7 +6,13 @@ import time
 import motioncapture
 import numpy as np
 
+"""
+This module provides a client for motion capture systems like Vicon.
+Manages background frame streaming and pose extraction for tracked rigid bodies.
+Used by flight_service.py to get drone position/orientation and by main.py to bootstrap initial poses.
+"""
 
+# Dataclass for storing a rigid body pose in 3D space
 @dataclass(frozen=True)
 class Pose:
     x: float
@@ -16,9 +22,11 @@ class Pose:
     timestamp: float
 
 
+# Client for querying motion capture frame data
 class ViconMotionClient:
     """Single-reader mocap client with a background frame thread."""
 
+    # Initialize the motion capture client
     def __init__(self, host_name: str, mocap_system_type: str = 'vicon'):
         self._mc = motioncapture.connect(mocap_system_type, {'hostname': host_name})
 
@@ -32,6 +40,7 @@ class ViconMotionClient:
         self._stop_event = threading.Event()
         self._started = False
 
+    # Start the background frame polling thread
     def start(self) -> None:
         if self._started:
             return
@@ -41,6 +50,7 @@ class ViconMotionClient:
         self._thread.start()
         self._started = True
 
+    # Stop the background frame polling thread
     def stop(self) -> None:
         self._stop_event.set()
         with self._condition:
@@ -51,10 +61,12 @@ class ViconMotionClient:
 
         self._started = False
 
+    # Get the latest motion capture frame
     def get_latest_frame(self) -> tuple[int, dict[str, Pose]]:
         with self._lock:
             return self._frame_id, dict(self._latest_frame)
 
+    # Wait for a new frame with optional timeout
     def wait_for_new_frame(
         self,
         last_frame_id: int,
@@ -71,10 +83,12 @@ class ViconMotionClient:
 
             return self._frame_id, dict(self._latest_frame)
 
+    # Get the latest pose of a specific rigid body
     def get_latest_pose(self, rigid_body_name: str) -> Pose | None:
         with self._lock:
             return self._latest_frame.get(rigid_body_name)
 
+    # Wait for a specific rigid body pose with optional timeout
     def wait_for_pose(
         self,
         rigid_body_name: str,
@@ -92,6 +106,7 @@ class ViconMotionClient:
 
         return frame_id, pose
 
+    # Background thread that polls mocap frames
     def _run(self) -> None:
         while not self._stop_event.is_set():
             self._mc.waitForNextFrame()
@@ -123,6 +138,7 @@ class ViconMotionClient:
                 self._frame_id += 1
                 self._condition.notify_all()
 
+    # Check if a position is valid and within expected bounds
     @staticmethod
     def _is_valid_position(pos) -> bool:
         return (
@@ -131,6 +147,7 @@ class ViconMotionClient:
             np.abs(pos[2]) > 1.0e-9 and np.abs(pos[2]) < 1.0e4
         )
 
+    # Convert quaternion to yaw angle in radians
     @staticmethod
     def _quaternion_to_yaw(q_w: float, q_x: float, q_y: float, q_z: float) -> float:
         return math.atan2(

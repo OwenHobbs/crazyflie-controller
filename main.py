@@ -101,7 +101,7 @@ def main() -> None:
                 )
 
             if stop_event.wait(TAKEOFF_HOLD_SECONDS):
-                break
+                break 
 
             flight_service_1.set_goal(
                 Goal(x=start_pose_1.x, y=start_pose_1.y, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=90)

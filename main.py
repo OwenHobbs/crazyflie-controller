@@ -1,4 +1,5 @@
 import logging
+import math
 import time
 import threading
 import keyboard
@@ -26,7 +27,7 @@ DRONE_OBJECT_NAME_2 = '2026_Drone2'
 TAKEOFF_HEIGHT = 1.5
 TAKEOFF_HOLD_SECONDS = 10.0
 
-TWO_DRONES = True
+TWO_DRONES = False
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -57,8 +58,8 @@ def main() -> None:
     mocap_client.start()
 
     flight_service_1 = FlightService(
-        crazyflie_uri=CRAZYFLIE_URI_1,
-        drone_object_name=DRONE_OBJECT_NAME_1,
+        crazyflie_uri=CRAZYFLIE_URI_2,
+        drone_object_name=DRONE_OBJECT_NAME_2,
         mocap_client=mocap_client,
         log_output_dir="flight_logs_1"
     )
@@ -85,7 +86,7 @@ def main() -> None:
     start_pose_1 = get_start_pos(
         flight_service=flight_service_1,
         stop_event=stop_event,
-        drone_object_name=DRONE_OBJECT_NAME_1
+        drone_object_name=DRONE_OBJECT_NAME_2
     )
     if (TWO_DRONES):
         start_pose_2 = get_start_pos(
@@ -110,39 +111,32 @@ def main() -> None:
 
             if stop_event.wait(TAKEOFF_HOLD_SECONDS):
                 break
-
-            flight_service_1.set_goal(
-                Goal(x=start_pose_1.x, y=start_pose_1.y, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=90)
-            )
-            if (TWO_DRONES):
-                flight_service_2.set_goal(
-                    Goal(x=start_pose_2.x, y=start_pose_2.y, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=90)
+            
+            for i in range(0, 360, 10):
+                flight_service_1.set_goal(
+                    Goal(x=start_pose_1.x, y=start_pose_1.y, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=i)
                 )
+                if (TWO_DRONES):
 
-            if stop_event.wait(TAKEOFF_HOLD_SECONDS):
-                break
+                    leader_pose = flight_service_1.get_goal()
 
-            flight_service_1.set_goal(
-                Goal(x=start_pose_1.x + 1.0, y=start_pose_1.y + 1.0, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=90)
-            )
-            if (TWO_DRONES):
-                flight_service_2.set_goal(
-                    Goal(x=start_pose_2.x + 1.0, y=start_pose_2.y + 1.0, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=90)
-                )
+                    print(f'leader_pose: {leader_pose}')
+                    
+                    offset_x = 0.5 * math.sin(math.radians(leader_pose.heading))
+                    offset_y = 0.5 * math.cos(math.radians(leader_pose.heading)) * -1
 
-            if stop_event.wait(TAKEOFF_HOLD_SECONDS):
-                break
+                    flight_service_2.set_goal(
+                        Goal(x=leader_pose.x + offset_x, y=leader_pose.y + offset_y, z=leader_pose.z, heading=leader_pose.heading)
+                    )
 
-            flight_service_1.set_goal(
-                Goal(x=start_pose_1.x + 1.0, y=start_pose_1.y + 1.0, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=0)
-            )
-            if (TWO_DRONES):
-                flight_service_2.set_goal(
-                    Goal(x=start_pose_2.x + 1.0, y=start_pose_2.y + 1.0, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=0)
-                )
+                    print(f'follower goal: {flight_service_2.get_goal()}')
 
-            if stop_event.wait(TAKEOFF_HOLD_SECONDS):
-                break
+                if stop_event.wait(1):
+                    break
+
+            break
+                
+            
 
     except KeyboardInterrupt:
         print('\nCtrl+C pressed, shutting down')

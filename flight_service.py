@@ -6,7 +6,7 @@ from typing import Optional
 
 from cflib.utils import uri_helper
 
-from flight_control import ControlCommand, Goal, PIDPositionController
+from flight_control import ControlCommand, Goal, PIDPositionController, PIDGains
 from crazyflie_client import CrazyflieClient
 from crazyflie_telemetry import CrazyflieTelemetry
 from flight_logger import FlightLogger
@@ -31,13 +31,16 @@ class FlightService:
         crazyflie_uri: str,
         drone_object_name: str,
         mocap_client: ViconMotionClient,
-        log_output_dir: str,
+        log_output_dir: str | None = None,
+        gains: PIDGains | None = None
     ):
         self._cf_client = CrazyflieClient(uri_helper.uri_from_env(default=crazyflie_uri))
         self._mocap_client = mocap_client
-        self._controller = PIDPositionController()
+        self._controller = PIDPositionController(gains=gains)
+        if log_output_dir is None:
+            log_output_dir = f'{drone_object_name}_Logs'
         self._logger = FlightLogger(base_output_dir=log_output_dir)
-        self._drone_object_name = drone_object_name
+        self.drone_object_name = drone_object_name
         self._telemetry_client = CrazyflieTelemetry(self._cf_client.cf)
 
         self._goal_lock = threading.Lock()
@@ -73,7 +76,7 @@ class FlightService:
 
         self._stop_event.clear()
         self._start_time = time.time()
-        self._thread = threading.Thread(target=self._run_loop, name=self._drone_object_name, daemon=True)
+        self._thread = threading.Thread(target=self._run_loop, name=f'{self.drone_object_name}_Service', daemon=True)
         self._thread.start()
         self._started = True
 
@@ -145,7 +148,7 @@ class FlightService:
             self._last_seen_frame_id = frame_id
 
             runtime = time.time() - self._start_time if self._start_time is not None else 0.0
-            drone_pose = frame.get(self._drone_object_name)
+            drone_pose = frame.get(self.drone_object_name)
 
             with self._state_lock:
                 self._latest_frame = frame

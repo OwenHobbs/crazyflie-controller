@@ -6,7 +6,7 @@ from typing import Optional
 
 from cflib.utils import uri_helper
 
-from flight_control import ControlCommand, Goal, PIDPositionController
+from flight_pid_controller import ControlCommand, Goal, PIDPositionController
 from crazyflie_client import CrazyflieClient
 from crazyflie_telemetry import CrazyflieTelemetry
 from flight_logger import FlightLogger
@@ -14,7 +14,7 @@ from vicon_motion import ViconMotionClient
 
 """
 This module provides the FlightService class that manages the background control loop
-for the Crazyflie drone. It integrates with flight_control, crazyflie_client, vicon_motion,
+for the Crazyflie drone. It integrates with flight_pid_controller, crazyflie_client, vicon_motion,
 and flight_logger modules to coordinate mocap data, PID control, and command execution.
 """
 

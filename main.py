@@ -1,159 +1,109 @@
 import logging
-import time
 import threading
+import time
+
 import keyboard
 
 from crazyflie_client import CrazyflieClient
-from flight_control import Goal
+from flight_behavior_controller import BehaviorController
 from flight_service import FlightService
 from vicon_motion import ViconMotionClient
 
 """
-Main entry point for the Crazyflie drone control application.
-Orchestrates the entire flight system by connecting motion capture (vicon_motion),
-drone communication (crazyflie_client), flight control (flight_service, flight_control),
-and data logging (flight_logger). Handles user input and goal sequencing.
+Simple single-drone test flight for BehaviorController.
 """
 
 MOCAP_HOSTNAME = '128.101.167.111'
 MOCAP_SYSTEM_TYPE = 'vicon'
 
-CRAZYFLIE_URI_1 = 'radio://0/100/2M/E7E7E7E7E9'
-DRONE_OBJECT_NAME_1 = '2026_Drone1'
-CRAZYFLIE_URI_2 = 'radio://0/90/2M/E7E7E7E7E8'
-DRONE_OBJECT_NAME_2 = '2026_Drone2'
+CRAZYFLIE_URI = 'radio://0/90/2M/E7E7E7E7E8'
+DRONE_OBJECT_NAME = '2026_Drone2'
 
-TAKEOFF_HEIGHT = 1.5
-TAKEOFF_HOLD_SECONDS = 10.0
-
-TWO_DRONES = True
+TAKEOFF_HEIGHT = 1.0
+MOVE_DISTANCE = 0.5
+MOVE_SPEED = 0.3
 
 logging.basicConfig(level=logging.ERROR)
 
-# Get the initial position of a drone from motion capture
-def get_start_pos(
-        flight_service: FlightService,
-        stop_event: threading.Event,
-        drone_object_name: str,
-):
-    start_pose = None
-    while start_pose is None and not stop_event.is_set():
-        start_pose = flight_service.get_latest_pose(drone_object_name)
-        time.sleep(0.01)
 
-    if start_pose is None:
-        print('Could not get initial drone pose')
-        flight_service.stop()
-        keyboard.unhook_all_hotkeys()
-        return None
+def wait_for_initial_pose(
+    flight_service: FlightService,
+    stop_event: threading.Event,
+) -> bool:
+    while not stop_event.is_set():
+        if flight_service.get_latest_pose(DRONE_OBJECT_NAME) is not None:
+            return True
+        time.sleep(0.05)
+    return False
 
-    return start_pose
 
-# Main application entry point
+def wait_until_idle(
+    behavior_controller: BehaviorController,
+    stop_event: threading.Event,
+) -> bool:
+    while not stop_event.is_set():
+        if behavior_controller.wait_until_idle(timeout=0.1):
+            return True
+    return False
+
+
 def main() -> None:
     CrazyflieClient.init_drivers()
 
     mocap_client = ViconMotionClient(MOCAP_HOSTNAME, MOCAP_SYSTEM_TYPE)
-    mocap_client.start()
-
-    flight_service_1 = FlightService(
-        crazyflie_uri=CRAZYFLIE_URI_1,
-        drone_object_name=DRONE_OBJECT_NAME_1,
+    flight_service = FlightService(
+        crazyflie_uri=CRAZYFLIE_URI,
+        drone_object_name=DRONE_OBJECT_NAME,
         mocap_client=mocap_client,
-        log_output_dir="flight_logs_1"
+        log_output_dir='flight_logs_1',
     )
-    if (TWO_DRONES):
-        flight_service_2 = FlightService(
-            crazyflie_uri=CRAZYFLIE_URI_2,
-            drone_object_name=DRONE_OBJECT_NAME_2,
-            mocap_client=mocap_client,
-            log_output_dir="flight_logs_2"
-        )
+    behavior_controller = BehaviorController(
+        flight_service=flight_service,
+        drone_object_name=DRONE_OBJECT_NAME,
+    )
 
     stop_event = threading.Event()
 
-    def on_esc():
+    def on_esc() -> None:
         print('\nEsc pressed, shutting down')
         stop_event.set()
 
     keyboard.add_hotkey('esc', on_esc)
 
-    flight_service_1.start()
-    if (TWO_DRONES):    
-        flight_service_2.start()
-
-    start_pose_1 = get_start_pos(
-        flight_service=flight_service_1,
-        stop_event=stop_event,
-        drone_object_name=DRONE_OBJECT_NAME_1
-    )
-    if (TWO_DRONES):
-        start_pose_2 = get_start_pos(
-            flight_service=flight_service_2,
-            stop_event=stop_event,
-            drone_object_name=DRONE_OBJECT_NAME_2
-        )
-
-    print(f'start_pose_1: {start_pose_1}')
-    if (TWO_DRONES):
-        print(f'start_pose_2: {start_pose_2}')
-
     try:
-        while not stop_event.is_set():
-            flight_service_1.set_goal(
-                Goal(x=start_pose_1.x, y=start_pose_1.y, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=0)
-            )
-            if (TWO_DRONES):
-                flight_service_2.set_goal(
-                    Goal(x=start_pose_2.x, y=start_pose_2.y, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=0)
-                )
+        mocap_client.start()
+        flight_service.start()
+        behavior_controller.start()
 
-            if stop_event.wait(TAKEOFF_HOLD_SECONDS):
-                break
+        if not wait_for_initial_pose(flight_service, stop_event):
+            return
 
-            flight_service_1.set_goal(
-                Goal(x=start_pose_1.x, y=start_pose_1.y, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=90)
-            )
-            if (TWO_DRONES):
-                flight_service_2.set_goal(
-                    Goal(x=start_pose_2.x, y=start_pose_2.y, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=90)
-                )
+        print('Taking off')
+        behavior_controller.takeoff(height=TAKEOFF_HEIGHT)
+        if not wait_until_idle(behavior_controller, stop_event):
+            return
 
-            if stop_event.wait(TAKEOFF_HOLD_SECONDS):
-                break
+        print('Moving forward')
+        behavior_controller.move_by(dx=MOVE_DISTANCE, dy=0.0, dz=0.0, speed=MOVE_SPEED)
+        if not wait_until_idle(behavior_controller, stop_event):
+            return
 
-            flight_service_1.set_goal(
-                Goal(x=start_pose_1.x + 1.0, y=start_pose_1.y + 1.0, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=90)
-            )
-            if (TWO_DRONES):
-                flight_service_2.set_goal(
-                    Goal(x=start_pose_2.x + 1.0, y=start_pose_2.y + 1.0, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=90)
-                )
+        print('Hovering')
+        behavior_controller.hover()
+        if stop_event.wait(2.0):
+            return
 
-            if stop_event.wait(TAKEOFF_HOLD_SECONDS):
-                break
-
-            flight_service_1.set_goal(
-                Goal(x=start_pose_1.x + 1.0, y=start_pose_1.y + 1.0, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=0)
-            )
-            if (TWO_DRONES):
-                flight_service_2.set_goal(
-                    Goal(x=start_pose_2.x + 1.0, y=start_pose_2.y + 1.0, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=0)
-                )
-
-            if stop_event.wait(TAKEOFF_HOLD_SECONDS):
-                break
-
+        print('Landing')
+        behavior_controller.land(descent_speed=MOVE_SPEED)
+        wait_until_idle(behavior_controller, stop_event)
     except KeyboardInterrupt:
         print('\nCtrl+C pressed, shutting down')
     finally:
-        flight_service_1.stop()
-        if (TWO_DRONES):
-            flight_service_2.stop()
+        behavior_controller.stop()
+        flight_service.stop()
         mocap_client.stop()
         keyboard.unhook_all_hotkeys()
 
 
-# Run the application
 if __name__ == '__main__':
     main()

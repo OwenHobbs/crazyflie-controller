@@ -20,17 +20,27 @@ MOCAP_SYSTEM_TYPE = 'vicon'
 
 BLUE_CRAZYFLIE_URI = 'radio://0/90/2M/E7E7E7E7E8'
 BLUE_CRAZYFLIE_OBJECT_NAME = '2026_Drone_Blue'
-BLUE_CRAZYFLIE_GAINS = PIDGains() # TODO: optimize gains
+BLUE_CRAZYFLIE_GAINS = PIDGains(
+    kpz=1.2,
+    kdz=1.2,
+    hover_thrust_cmd=58100,
+)
 
 RED_CRAZYFLIE_URI = 'radio://0/100/2M/E7E7E7E7E9'
 RED_CRAZYFLIE_OBJECT_NAME = '2026_Drone_Red'
-RED_CRAZYFLIE_GAINS = PIDGains() # TODO: optimize gains
+RED_CRAZYFLIE_GAINS = PIDGains(
+    kpz=2.8,
+    kdz=0.8,
+    hover_thrust_cmd=54250,
+)
 
 TAKEOFF_HEIGHT = 1.5
-FLIGHT_STEP = 0.5
+FLIGHT_X_STEP = 0.5
+FLIGHT_Y_STEP = 0.5
+FLIGHT_Z_STEP = -0.5
 FLIGHT_HEADING_1 = 0
 FLIGHT_HEADING_2 = 90
-FLIGHT_DELAY = 4
+FLIGHT_DELAY = 8
 USE_TWO_DRONES = False
 
 logging.basicConfig(level=logging.ERROR)
@@ -126,22 +136,22 @@ def main() -> None:
                 break
 
             flight_service_1.set_goal(
-                Goal(x=start_pose_1.x + FLIGHT_STEP, y=start_pose_1.y + FLIGHT_STEP, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=FLIGHT_HEADING_2)
+                Goal(x=start_pose_1.x + FLIGHT_X_STEP, y=start_pose_1.y + FLIGHT_Y_STEP, z=start_pose_1.z + TAKEOFF_HEIGHT + FLIGHT_Z_STEP, heading=FLIGHT_HEADING_2)
             )
             if USE_TWO_DRONES:
                 flight_service_2.set_goal(
-                    Goal(x=start_pose_2.x + FLIGHT_STEP, y=start_pose_2.y + FLIGHT_STEP, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=FLIGHT_HEADING_2)
+                    Goal(x=start_pose_2.x + FLIGHT_X_STEP, y=start_pose_2.y + FLIGHT_Y_STEP, z=start_pose_2.z + TAKEOFF_HEIGHT + FLIGHT_Z_STEP, heading=FLIGHT_HEADING_2)
                 )
 
             if stop_event.wait(FLIGHT_DELAY):
                 break
 
             flight_service_1.set_goal(
-                Goal(x=start_pose_1.x + FLIGHT_STEP, y=start_pose_1.y + FLIGHT_STEP, z=start_pose_1.z + TAKEOFF_HEIGHT, heading=FLIGHT_HEADING_1)
+                Goal(x=start_pose_1.x + FLIGHT_X_STEP, y=start_pose_1.y + FLIGHT_Y_STEP, z=start_pose_1.z + TAKEOFF_HEIGHT + FLIGHT_Z_STEP, heading=FLIGHT_HEADING_1)
             )
             if USE_TWO_DRONES:
                 flight_service_2.set_goal(
-                    Goal(x=start_pose_2.x + FLIGHT_STEP, y=start_pose_2.y + FLIGHT_STEP, z=start_pose_2.z + TAKEOFF_HEIGHT, heading=FLIGHT_HEADING_1)
+                    Goal(x=start_pose_2.x + FLIGHT_X_STEP, y=start_pose_2.y + FLIGHT_Y_STEP, z=start_pose_2.z + TAKEOFF_HEIGHT + FLIGHT_Z_STEP, heading=FLIGHT_HEADING_1)
                 )
 
             if stop_event.wait(FLIGHT_DELAY):

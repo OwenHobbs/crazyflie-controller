@@ -37,6 +37,8 @@ class PIDGains:
     kdx: float = 0.8155
     kdy: float = 0.8155
     kdz: float = 0.4104
+    # Per-drone baseline thrust command that roughly holds altitude in hover.
+    hover_thrust_cmd: int = 56000
 
     # Heading control in the Vicon/world frame.
     # yaw_command_sign exists because the Crazyflie yaw-rate sign can be opposite
@@ -122,7 +124,9 @@ class PIDPositionController:
         pitch_deg = float(np.clip(pitch_deg, -self.gains.max_pitch_deg, self.gains.max_pitch_deg))
         roll_deg = float(np.clip(roll_deg, -self.gains.max_roll_deg, self.gains.max_roll_deg))
 
-        thrust_cmd = thrust * (50000 / 2.3346) + 10001
+        # The PD term now adds/subtracts around hover instead of needing to
+        # generate the full lift required to keep the drone in the air.
+        thrust_cmd = thrust * (50000 / 2.3346) + self.gains.hover_thrust_cmd
         thrust_cmd = int(np.clip(thrust_cmd, 0, 0xFFFF))
 
         yaw_rate_deg = 0.0

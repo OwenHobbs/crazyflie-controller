@@ -25,9 +25,9 @@ CRAZYFLIE_URI_2 = 'radio://0/90/2M/E7E7E7E7E8'
 DRONE_OBJECT_NAME_2 = '2026_Drone2'
 
 TAKEOFF_HEIGHT = 1.5
-TAKEOFF_HOLD_SECONDS = 10.0
+TAKEOFF_HOLD_SECONDS = 3.0
 
-TWO_DRONES = True
+TWO_DRONES = False
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -63,7 +63,6 @@ def main() -> None:
         mocap_client=mocap_client,
         log_output_dir="flight_logs_1"
     )
-    mission_control_1 = MissionControl(flight_service=flight_service_1)
     if (TWO_DRONES):
         flight_service_2 = FlightService(
             crazyflie_uri=CRAZYFLIE_URI_2,
@@ -71,9 +70,11 @@ def main() -> None:
             mocap_client=mocap_client,
             log_output_dir="flight_logs_2"
         )
-        mission_control_2 = MissionControl(flight_service=flight_service_2)
 
     stop_event = threading.Event()
+    mission_control_1 = MissionControl(flight_service=flight_service_1, stop_event=stop_event)
+    if (TWO_DRONES):
+        mission_control_2 = MissionControl(flight_service=flight_service_2, stop_event=stop_event)
 
     def on_esc():
         print('\nEsc pressed, shutting down')
@@ -102,10 +103,8 @@ def main() -> None:
         print(f'start_pose_2: {start_pose_2}')
 
     try:
-        while not stop_event.is_set():
-            mission_control_1.hover(1.0)
-            if stop_event.wait(TAKEOFF_HOLD_SECONDS):
-                break
+        while not stop_event.is_set():    
+            mission_control_1.hover(1)
 
     except KeyboardInterrupt:
         print('\nCtrl+C pressed, shutting down')

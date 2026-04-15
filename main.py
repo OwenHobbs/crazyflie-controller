@@ -5,6 +5,7 @@ import keyboard
 from crazyflie.crazyflie_client import CrazyflieClient
 from flight.flight_control import PIDGains
 from flight.flight_service import FlightService
+from mission.mission_follow_object import MissionFollowObject
 from mission.mission_step_test import MissionStepTest
 from mocap.mocap_client import MocapClient
 
@@ -48,10 +49,10 @@ def main() -> None:
 
     # TODO: Change between RED and BLUE as necessary
     flight_service_1 = FlightService(
-        crazyflie_uri=RED_CRAZYFLIE_URI,
-        drone_object_name=RED_CRAZYFLIE_OBJECT_NAME,
+        crazyflie_uri=BLUE_CRAZYFLIE_URI,
+        drone_object_name=BLUE_CRAZYFLIE_OBJECT_NAME,
         mocap_client=mocap_client,
-        gains=RED_CRAZYFLIE_GAINS
+        gains=BLUE_CRAZYFLIE_GAINS
     )
     flight_service_2 = None
     if USE_TWO_DRONES:
@@ -75,10 +76,16 @@ def main() -> None:
 
     try:
         # TODO: Initialize desired mission here
-        MissionStepTest(
+
+        # MissionStepTest(
+        #     stop_event=stop_event,
+        #     flight_service_1=flight_service_1,
+        #     flight_service_2=flight_service_2
+        # ).execute()
+
+        MissionFollowObject(
             stop_event=stop_event,
-            flight_service_1=flight_service_1,
-            flight_service_2=flight_service_2
+            flight_service=flight_service_1
         ).execute()
     except KeyboardInterrupt:
         print('\nCtrl+C pressed, shutting down')

@@ -6,7 +6,7 @@ import numpy as np
 
 """
 This module provides flight control functionality for the Crazyflie drone,
-including PID-based position and heading control using data from Vicon motion capture.
+including PID-based position and heading control using data from motion capture.
 Exports Goal, ControlCommand, and PIDPositionController for use by flight_service.py and main.py.
 """
 
@@ -16,7 +16,7 @@ class Goal:
     x: float
     y: float
     z: float
-    heading: float | None = None  # degrees in Vicon world frame
+    heading: float | None = None  # degrees in the mocap/world frame
 
 
 # Dataclass for control commands sent to the drone
@@ -44,9 +44,9 @@ class PIDGains:
     # Per-drone baseline thrust command that roughly holds altitude in hover.
     hover_thrust_cmd: int = 56000
 
-    # Heading control in the Vicon/world frame.
+    # Heading control in the mocap/world frame.
     # yaw_command_sign exists because the Crazyflie yaw-rate sign can be opposite
-    # to the sign of the yaw angle coming from Vicon.
+    # to the sign of the yaw angle coming from the mocap system.
     kp_heading: float = 0.6
     kd_heading: float = 0.15
     heading_deadband_deg: float = 4.0
@@ -72,7 +72,7 @@ class PIDPositionController:
         self._x_history = deque(maxlen=self.window_size)
         self._y_history = deque(maxlen=self.window_size)
         self._z_history = deque(maxlen=self.window_size)
-        self._yaw_history = deque(maxlen=self.window_size)  # radians from Vicon
+        self._yaw_history = deque(maxlen=self.window_size)  # radians from mocap
         self._time_history = deque(maxlen=self.window_size)
 
     # Add a new position sample to the history

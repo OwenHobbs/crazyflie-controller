@@ -7,7 +7,7 @@ import motioncapture
 import numpy as np
 
 """
-This module provides a client for motion capture systems like Vicon.
+This module provides a client for motion capture systems.
 Manages background frame streaming and pose extraction for tracked rigid bodies.
 Used by flight_service.py to get drone position/orientation and by main.py to bootstrap initial poses.
 """
@@ -23,12 +23,12 @@ class Pose:
 
 
 # Client for querying motion capture frame data
-class ViconMotionClient:
+class MocapClient:
     """Single-reader mocap client with a background frame thread."""
 
     # Initialize the motion capture client
-    def __init__(self, host_name: str, mocap_system_type: str = 'vicon'):
-        self._mc = motioncapture.connect(mocap_system_type, {'hostname': host_name})
+    def __init__(self, host_name: str, system_type: str):
+        self._mc = motioncapture.connect(system_type, {'hostname': host_name})
 
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
@@ -46,7 +46,7 @@ class ViconMotionClient:
             return
 
         self._stop_event.clear()
-        self._thread = threading.Thread(target=self._run, name='ViconMotionThread', daemon=True)
+        self._thread = threading.Thread(target=self._run, name='MocapClientThread', daemon=True)
         self._thread.start()
         self._started = True
 

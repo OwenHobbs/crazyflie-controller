@@ -6,16 +6,17 @@ from typing import Optional
 
 from cflib.utils import uri_helper
 
-from flight_control import ControlCommand, Goal, PIDPositionController, PIDGains
-from crazyflie_client import CrazyflieClient
-from crazyflie_telemetry import CrazyflieTelemetry
-from flight_logger import FlightLogger
-from vicon_motion import ViconMotionClient
+from crazyflie.crazyflie_client import CrazyflieClient
+from crazyflie.crazyflie_telemetry import CrazyflieTelemetry
+from mocap.mocap_client import MocapClient
+
+from .flight_control import ControlCommand, Goal, PIDGains, PIDPositionController
+from .flight_logger import FlightLogger
 
 """
 This module provides the FlightService class that manages the background control loop
-for the Crazyflie drone. It integrates with flight_control, crazyflie_client, vicon_motion,
-and flight_logger modules to coordinate mocap data, PID control, and command execution.
+for the Crazyflie drone. It integrates with the flight, crazyflie, and mocap
+packages to coordinate tracking data, PID control, and command execution.
 """
 
 # Service class for managing the drone control loop
@@ -30,7 +31,7 @@ class FlightService:
         self,
         crazyflie_uri: str,
         drone_object_name: str,
-        mocap_client: ViconMotionClient,
+        mocap_client: MocapClient,
         log_output_dir: str | None = None,
         gains: PIDGains | None = None
     ):
@@ -38,7 +39,7 @@ class FlightService:
         self._mocap_client = mocap_client
         self._controller = PIDPositionController(gains=gains)
         if log_output_dir is None:
-            log_output_dir = f'{drone_object_name}_Logs'
+            log_output_dir = f'flight_logs/{drone_object_name}'
         self._logger = FlightLogger(base_output_dir=log_output_dir)
         self.drone_object_name = drone_object_name
         self._telemetry_client = CrazyflieTelemetry(self._cf_client.cf)

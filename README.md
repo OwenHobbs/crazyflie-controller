@@ -32,13 +32,20 @@ It may help to also have the drones on separate channels. This can be changed by
 
 The drone control is split into several layers to facilitate easy library use.
 
+## Project Structure
+
+- `main.py` - application entry point
+- `flight/` - control, service, and logging modules
+- `crazyflie/` - Crazyflie communication and telemetry modules
+- `mocap/` - motion capture client and pose types
+
 ## Mission Control
 
 This layer...
 
 ## Flight Control
 
-This layer implements a PD position and heading controller for the drone. It takes recent Vicon position/yaw samples, compares them to a desired goal state (x, y, z, heading), and outputs roll, pitch, yaw-rate, and thrust commands for the Crazyflie.
+This layer implements a PD position and heading controller for the drone. It takes recent motion-capture position/yaw samples, compares them to a desired goal state (x, y, z, heading), and outputs roll, pitch, yaw-rate, and thrust commands for the Crazyflie. The code lives in `flight/flight_control.py`.
 
 #### Main functions
 - `add_sample(...)`
@@ -62,7 +69,7 @@ This layer implements a PD position and heading controller for the drone. It tak
 
 ## Flight Service
 
-This layer manages the live flight loop. It connects the Vicon motion capture, controller, Crazyflie command interface, and logging system into a single background service.
+This layer manages the live flight loop. It connects the motion-capture client, controller, Crazyflie command interface, and logging system into a single background service. The code lives in `flight/flight_service.py`.
 
 #### Main functions
 
@@ -76,7 +83,7 @@ This layer manages the live flight loop. It connects the Vicon motion capture, c
     - Provide access to the latest mocap frame, runtime, pose, and most recent control command.
 - `_run_loop()`
     - Main background loop:
-        - waits for new Vicon frames
+        - waits for new mocap frames
         - reads the drone’s current pose
         - sends zero commands if no goal is active
         - feeds pose data into the controller
@@ -88,7 +95,7 @@ This class acts as the central flight coordinator, allowing the rest of the prog
 
 ## Flight Logger
 
-This layer handles flight data logging and post-run analysis. It records drone state, control commands, goals, and Crazyflie telemetry during flight, then saves the data and plots for review.
+This layer handles flight data logging and post-run analysis. It records drone state, control commands, goals, and Crazyflie telemetry during flight, then saves the data and plots for review. The code lives in `flight/flight_logger.py`.
 
 #### Main functions
 

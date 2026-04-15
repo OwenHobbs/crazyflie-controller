@@ -3,16 +3,15 @@ import time
 import threading
 import keyboard
 
-from crazyflie_client import CrazyflieClient
-from flight_control import Goal, PIDGains
-from flight_service import FlightService
-from vicon_motion import ViconMotionClient
+from crazyflie.crazyflie_client import CrazyflieClient
+from flight.flight_control import Goal, PIDGains
+from flight.flight_service import FlightService
+from mocap.mocap_client import MocapClient
 
 """
 Main entry point for the Crazyflie drone control application.
-Orchestrates the entire flight system by connecting motion capture (vicon_motion),
-drone communication (crazyflie_client), flight control (flight_service, flight_control),
-and data logging (flight_logger). Handles user input and goal sequencing.
+Orchestrates the entire flight system by connecting the mocap, Crazyflie,
+and flight packages. Handles user input and goal sequencing.
 """
 
 MOCAP_HOSTNAME = '128.101.167.111'
@@ -69,7 +68,7 @@ def get_start_pos(
 def main() -> None:
     CrazyflieClient.init_drivers()
 
-    mocap_client = ViconMotionClient(MOCAP_HOSTNAME, MOCAP_SYSTEM_TYPE)
+    mocap_client = MocapClient(MOCAP_HOSTNAME, MOCAP_SYSTEM_TYPE)
     mocap_client.start()
 
     # Change between RED and BLUE as necessary

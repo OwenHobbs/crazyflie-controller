@@ -37,6 +37,10 @@ class PIDGains:
     kdx: float = 0.8155
     kdy: float = 0.8155
     kdz: float = 0.4104
+    # Optional alternate vertical gains used only when the goal is below the
+    # current altitude, which helps keep descent steps from becoming too sharp.
+    kpz_down: float | None = None
+    kdz_down: float | None = None
     # Per-drone baseline thrust command that roughly holds altitude in hover.
     hover_thrust_cmd: int = 56000
 
@@ -116,7 +120,15 @@ class PIDPositionController:
 
         theta = self.gains.kpx * x_error_local[-1] + self.gains.kdx * dx
         phi = self.gains.kpy * y_error_local[-1] + self.gains.kdy * dy
-        thrust = self.gains.kpz * z_error[-1] + self.gains.kdz * dz
+        kpz = self.gains.kpz
+        kdz = self.gains.kdz
+        if z_error[-1] < 0.0:
+            if self.gains.kpz_down is not None:
+                kpz = self.gains.kpz_down
+            if self.gains.kdz_down is not None:
+                kdz = self.gains.kdz_down
+
+        thrust = kpz * z_error[-1] + kdz * dz
 
         pitch_deg = np.rad2deg(theta)
         roll_deg = -np.rad2deg(phi)
@@ -127,6 +139,10 @@ class PIDPositionController:
         # The PD term now adds/subtracts around hover instead of needing to
         # generate the full lift required to keep the drone in the air.
         thrust_cmd = thrust * (50000 / 2.3346) + self.gains.hover_thrust_cmd
+        # Keep vertical lift closer to the requested value while the vehicle is
+        # tilted for horizontal motion.
+        tilt_cos = math.cos(math.radians(roll_deg)) * math.cos(math.radians(pitch_deg))
+        thrust_cmd /= max(tilt_cos, 0.5)
         thrust_cmd = int(np.clip(thrust_cmd, 0, 0xFFFF))
 
         yaw_rate_deg = 0.0

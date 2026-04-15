@@ -31,6 +31,8 @@ RED_CRAZYFLIE_OBJECT_NAME = '2026_Drone_Red'
 RED_CRAZYFLIE_GAINS = PIDGains(
     kpz=2.8,
     kdz=0.8,
+    kpz_down=1.1,
+    kdz_down=1.0,
     hover_thrust_cmd=54250,
 )
 

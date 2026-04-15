@@ -12,38 +12,56 @@ class MissionFollowObject(MissionBase):
     def __init__(
         self,
         stop_event: threading.Event,
-        flight_service: FlightService
+        flight_service_1: FlightService,
+        flight_service_2: FlightService
     ):
         super().__init__(stop_event)
-        self._flight_service = flight_service
+        self._flight_service_1 = flight_service_1
+        self._flight_service_2 = flight_service_2
 
     def execute(self):
         # Initialize start pose
-        drone_start_pose = self._flight_service.get_latest_pose(self._flight_service.drone_object_name)
-        if drone_start_pose is None:
-            print(f'Unable to find drone: {self._flight_service.drone_object_name}')
+        drone_start_pose_1 = self._flight_service_1.get_latest_pose(self._flight_service_1.drone_object_name)
+        if drone_start_pose_1 is None:
+            print(f'Unable to find drone 1: {self._flight_service_1.drone_object_name}')
+            return
+        drone_start_pose_2 = self._flight_service_2.get_latest_pose(self._flight_service_2.drone_object_name)
+        if drone_start_pose_2 is None:
+            print(f'Unable to find drone 2: {self._flight_service_2.drone_object_name}')
             return
 
         # Takeoff
-        self._flight_service.set_goal(Goal(
-            x = drone_start_pose.x,
-            y = drone_start_pose.y,
-            z = drone_start_pose.z + TAKEOFF_HEIGHT,
+        self._flight_service_1.set_goal(Goal(
+            x = drone_start_pose_1.x,
+            y = drone_start_pose_1.y,
+            z = drone_start_pose_1.z + TAKEOFF_HEIGHT,
             heading = 0
+        ))
+        self._flight_service_2.set_goal(Goal(
+            x=drone_start_pose_2.x,
+            y=drone_start_pose_2.y,
+            z=drone_start_pose_2.z + TAKEOFF_HEIGHT,
+            heading=0
         ))
         if self._wait(5): return
 
         while not self._stop_event.is_set():
-            current_object_pose = self._flight_service.get_latest_pose(OBJECT_NAME)
+            current_object_pose = self._flight_service_1.get_latest_pose(OBJECT_NAME)
             if current_object_pose is None:
                 print(f'Unable to find object: {OBJECT_NAME}')
                 # TODO: implement safe land
                 break
 
-            self._flight_service.set_goal(Goal(
-                x = current_object_pose.x,
+            self._flight_service_1.set_goal(Goal(
+                x = current_object_pose.x - 0.25,
                 y = current_object_pose.y,
                 z = current_object_pose.z + TAKEOFF_HEIGHT
+            ))
+
+            self._flight_service_2.set_goal(Goal(
+                x=current_object_pose.x + 0.25,
+                y=current_object_pose.y,
+                z=current_object_pose.z + TAKEOFF_HEIGHT
             ))
 
             if self._wait(0.1): break

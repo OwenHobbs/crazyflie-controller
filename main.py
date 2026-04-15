@@ -36,7 +36,7 @@ RED_CRAZYFLIE_GAINS = PIDGains(
     hover_thrust_cmd=54250,
 )
 
-USE_TWO_DRONES = False
+USE_TWO_DRONES = True
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -85,7 +85,8 @@ def main() -> None:
 
         MissionFollowObject(
             stop_event=stop_event,
-            flight_service=flight_service_1
+            flight_service_1=flight_service_1,
+            flight_service_2=flight_service_2
         ).execute()
     except KeyboardInterrupt:
         print('\nCtrl+C pressed, shutting down')

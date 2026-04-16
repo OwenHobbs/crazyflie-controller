@@ -9,8 +9,9 @@ from cflib.utils import uri_helper
 from crazyflie.crazyflie_client import CrazyflieClient
 from crazyflie.crazyflie_telemetry import CrazyflieTelemetry
 from mocap.mocap_client import MocapClient
+from .flight_action import FlightAction, FlightActionIdle
 
-from .flight_control import ControlCommand, Goal, PIDGains, PIDPositionController
+from .flight_control import ControlCommand, PIDGains, PIDPositionController
 from .flight_logger import FlightLogger
 
 """
@@ -23,7 +24,7 @@ packages to coordinate tracking data, PID control, and command execution.
 class FlightService:
     """Owns the background mocap/control/send loop.
 
-    Main (or any other thread) only needs to call set_goal().
+    Main (or any other thread) only needs to call set_action().
     """
 
     # Initialize the flight service with drone and mocap configuration
@@ -44,9 +45,9 @@ class FlightService:
         self.drone_object_name = drone_object_name
         self._telemetry_client = CrazyflieTelemetry(self._cf_client.cf)
 
-        self._goal_lock = threading.Lock()
+        self._action_lock = threading.Lock()
         self._state_lock = threading.Lock()
-        self._goal: Optional[Goal] = None
+        self._action: FlightAction = FlightActionIdle()
         self._latest_frame: dict | None = None
         self._latest_runtime: float = 0.0
         self._last_command: Optional[ControlCommand] = None
@@ -96,20 +97,15 @@ class FlightService:
             self._cf_client.close()
             self._started = False
 
-    # Set a new control goal for the drone
-    def set_goal(self, goal: Goal) -> None:
-        with self._goal_lock:
-            self._goal = goal
+    # Set a new control action for the drone
+    def set_action(self, action: FlightAction) -> None:
+        with self._action_lock:
+            self._action = action
 
-    # Clear the current control goal
-    def clear_goal(self) -> None:
-        with self._goal_lock:
-            self._goal = None
-
-    # Get the current control goal
-    def get_goal(self) -> Optional[Goal]:
-        with self._goal_lock:
-            return self._goal
+    # Get the current control action
+    def get_action(self) -> FlightAction:
+        with self._action_lock:
+            return self._action
 
     # Get the latest motion capture frame
     def get_latest_frame(self) -> dict:
@@ -146,23 +142,17 @@ class FlightService:
                 continue
 
             frame_id, frame = result
+            # thread.lock not needed for self._last_seen_frame_id
+            # since it is not accessed by external threads
             self._last_seen_frame_id = frame_id
-
             runtime = time.time() - self._start_time if self._start_time is not None else 0.0
-            drone_pose = frame.get(self.drone_object_name)
 
             with self._state_lock:
                 self._latest_frame = frame
                 self._latest_runtime = runtime
 
+            drone_pose = frame.get(self.drone_object_name)
             if drone_pose is None:
-                continue
-
-            with self._goal_lock:
-                goal = self._goal
-
-            if goal is None:
-                self._cf_client.send_setpoint(0.0, 0.0, 0.0, 0)
                 continue
 
             self._controller.add_sample(
@@ -172,6 +162,25 @@ class FlightService:
                 yaw=drone_pose.yaw,
                 timestamp=drone_pose.timestamp,
             )
+
+            # Determine goal based on flight action
+            with self._action_lock:
+                goal, new_action = self._action.execute(
+                    drone_pose=drone_pose,
+                    frame=frame,
+                    flight_runtime=runtime,
+                )
+                # Update the next action if applicable
+                # TODO: new_action should be removed in favor of a queue of actions
+                if new_action is not None:
+                    self._action = new_action
+                    # TODO: could notify listeners that action is finished
+                    # skip the current action and avoid killing drone
+                    continue
+
+            if goal is None:
+                self._cf_client.send_setpoint(0.0, 0.0, 0.0, 0)
+                continue
 
             command = self._controller.compute_command(goal)
 

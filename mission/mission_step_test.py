@@ -1,5 +1,6 @@
 import threading
 
+from flight.flight_action import FlightActionHover
 from flight.flight_control import Goal
 from flight.flight_service import FlightService
 from mission.mission_base import MissionBase
@@ -45,13 +46,13 @@ class MissionStepTest(MissionBase):
         # This is the absolute heading, TODO: make offset_heading?
         heading: float | None = None
     ):
-        self._flight_service_1.set_goal(
+        self._flight_service_1.set_action(FlightActionHover(
             Goal(x=self._start_pose_1.x + offset_x, y=self._start_pose_1.y + offset_y, z=self._start_pose_1.z + offset_z, heading=heading)
-        )
+        ))
         if self._use_two_drones:
-            self._flight_service_2.set_goal(
+            self._flight_service_2.set_action(FlightActionHover(
                 Goal(x=self._start_pose_2.x + offset_x, y=self._start_pose_2.y + offset_y, z=self._start_pose_2.z + offset_z, heading=heading)
-            )
+            ))
 
     def execute(self):
         self._initialize_start_poses()

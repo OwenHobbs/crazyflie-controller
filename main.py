@@ -37,7 +37,7 @@ RED_CRAZYFLIE_GAINS = PIDGains(
     hover_thrust_cmd=54250,
 )
 
-USE_TWO_DRONES = False
+USE_TWO_DRONES = True
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -78,16 +78,16 @@ def main() -> None:
     try:
         # TODO: Initialize desired mission here
 
-        # MissionStepTest(
-        #     stop_event=stop_event,
-        #     flight_service_1=flight_service_1,
-        #     flight_service_2=flight_service_2
-        # ).execute()
-
-        MissionFollowObjectSingle(
+        MissionStepTest(
             stop_event=stop_event,
-            flight_service=flight_service_1,
+            flight_service_1=flight_service_1,
+            flight_service_2=flight_service_2
         ).execute()
+
+        # MissionFollowObjectSingle(
+        #     stop_event=stop_event,
+        #     flight_service=flight_service_1,
+        # ).execute()
 
         # MissionFollowObjectDual(
         #     stop_event=stop_event,

@@ -55,9 +55,10 @@ class MissionFollowObjectYawOffset(MissionBase):
                 break
 
             self._flight_service_1.set_goal(Goal(
-                x = current_object_pose.x - 0.25,
-                y = current_object_pose.y,
-                z = current_object_pose.z + TAKEOFF_HEIGHT
+                x = current_object_pose.x,
+                y = current_object_pose.y + 0.25,
+                z = current_object_pose.z + TAKEOFF_HEIGHT,
+                heading = math.degrees(current_object_pose.yaw)
             ))
 
             leader_pose = self._flight_service_1.get_latest_pose(self._flight_service_1.drone_object_name)

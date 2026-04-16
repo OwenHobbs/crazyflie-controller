@@ -7,7 +7,7 @@ from mission.mission_base import MissionBase
 OBJECT_NAME = 'box'
 TAKEOFF_HEIGHT = 1.0
 
-class MissionFollowObject(MissionBase):
+class MissionFollowObjectDual(MissionBase):
 
     def __init__(
         self,

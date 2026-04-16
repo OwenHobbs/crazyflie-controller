@@ -1,5 +1,6 @@
 from __future__ import annotations
 import time
+import math
 from abc import ABC, abstractmethod
 
 from flight.flight_control import Goal
@@ -57,5 +58,24 @@ class FlightActionHover(FlightAction):
     def determine_goal(self) -> Goal | None:
         return self._desired_goal
 
-# class FlightActionLand(FlightAction):
-#     pass
+class FlightActionLand(FlightAction):
+    def __init__(self, location):
+        super().__init__()
+        self.object_name = location
+
+    def on_initial_execution(self):
+        self._initial_position = self._drone_pose
+
+    def set_object_goal(self):
+        objPose = self.frame.get(self.object_name)
+        z_real = self._initial_position.z + 1/(5*(objPose.z - self._initial_position.z))*math.pow((self._action_runtime), 2)
+        if (z_real < 0.005):
+            z_real = 0.005
+        self._desired_goal.x = objPose.x
+        self._desired_goal.y = objPose.y
+        self._desired_goal.z = z_real
+        self._desired_goal.heading = math.rad2deg(objPose.yaw)
+    
+    def determine_goal(self) -> Goal | None:
+        set_object_goal(self)
+        return self._desired_goal

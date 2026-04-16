@@ -5,7 +5,8 @@ import keyboard
 from crazyflie.crazyflie_client import CrazyflieClient
 from flight.flight_control import PIDGains
 from flight.flight_service import FlightService
-from mission.mission_follow_object import MissionFollowObject
+from mission.mission_follow_object_dual import MissionFollowObjectDual
+from mission.mission_follow_object_single import MissionFollowObjectSingle
 from mission.mission_step_test import MissionStepTest
 from mocap.mocap_client import MocapClient
 
@@ -36,7 +37,7 @@ RED_CRAZYFLIE_GAINS = PIDGains(
     hover_thrust_cmd=54250,
 )
 
-USE_TWO_DRONES = True
+USE_TWO_DRONES = False
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -83,11 +84,16 @@ def main() -> None:
         #     flight_service_2=flight_service_2
         # ).execute()
 
-        MissionFollowObject(
+        MissionFollowObjectSingle(
             stop_event=stop_event,
-            flight_service_1=flight_service_1,
-            flight_service_2=flight_service_2
+            flight_service=flight_service_1,
         ).execute()
+
+        # MissionFollowObjectDual(
+        #     stop_event=stop_event,
+        #     flight_service_1=flight_service_1,
+        #     flight_service_2=flight_service_2
+        # ).execute()
     except KeyboardInterrupt:
         print('\nCtrl+C pressed, shutting down')
     finally:

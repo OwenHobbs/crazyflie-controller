@@ -37,7 +37,7 @@ RED_CRAZYFLIE_GAINS = PIDGains(
     hover_thrust_cmd=54250,
 )
 
-USE_TWO_DRONES = True
+USE_TWO_DRONES = False
 
 logging.basicConfig(level=logging.ERROR)
 

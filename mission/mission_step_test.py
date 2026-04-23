@@ -1,17 +1,17 @@
 import threading
 
-from flight.flight_action import FlightActionHover
+from flight.flight_action import FlightActionHover, FlightActionLand
 from flight.flight_control import Goal
 from flight.flight_service import FlightService
 from mission.mission_base import MissionBase
 
-TAKEOFF_HEIGHT = 1.5
+TAKEOFF_HEIGHT = 1.0
 FLIGHT_X_STEP = 0.5
 FLIGHT_Y_STEP = 0.5
-FLIGHT_Z_STEP = -0.5
+FLIGHT_Z_STEP = -0.0
 FLIGHT_HEADING_1 = 0
 FLIGHT_HEADING_2 = 90
-FLIGHT_DELAY = 8
+FLIGHT_DELAY = 5
 
 class MissionStepTest(MissionBase):
 
@@ -57,15 +57,27 @@ class MissionStepTest(MissionBase):
     def execute(self):
         self._initialize_start_poses()
 
-        while not self._stop_event.is_set():
-            self._set_goal_relative_to_start_pose(0, 0, TAKEOFF_HEIGHT, FLIGHT_HEADING_1)
-            if self._wait(FLIGHT_DELAY): break
+        self._set_goal_relative_to_start_pose(0, 0, TAKEOFF_HEIGHT, FLIGHT_HEADING_1)
+        if self._wait(FLIGHT_DELAY): return
 
-            self._set_goal_relative_to_start_pose(0, 0, TAKEOFF_HEIGHT, FLIGHT_HEADING_2)
-            if self._wait(FLIGHT_DELAY): break
+        self._set_goal_relative_to_start_pose(0, 0, TAKEOFF_HEIGHT, FLIGHT_HEADING_2)
+        if self._wait(FLIGHT_DELAY): return
 
-            self._set_goal_relative_to_start_pose(FLIGHT_X_STEP, FLIGHT_Y_STEP, TAKEOFF_HEIGHT + FLIGHT_Z_STEP, FLIGHT_HEADING_2)
-            if self._wait(FLIGHT_DELAY): break
+        self._set_goal_relative_to_start_pose(FLIGHT_X_STEP, FLIGHT_Y_STEP, TAKEOFF_HEIGHT + FLIGHT_Z_STEP, FLIGHT_HEADING_2)
+        if self._wait(FLIGHT_DELAY): return
 
-            self._set_goal_relative_to_start_pose(FLIGHT_X_STEP, FLIGHT_Y_STEP, TAKEOFF_HEIGHT + FLIGHT_Z_STEP, FLIGHT_HEADING_1)
-            if self._wait(FLIGHT_DELAY): break
+        self._set_goal_relative_to_start_pose(FLIGHT_X_STEP, FLIGHT_Y_STEP, TAKEOFF_HEIGHT + FLIGHT_Z_STEP, FLIGHT_HEADING_1)
+        if self._wait(FLIGHT_DELAY): return
+
+        self._set_goal_relative_to_start_pose(0, 0, TAKEOFF_HEIGHT, FLIGHT_HEADING_1)
+        if self._wait(FLIGHT_DELAY): return
+
+        self._flight_service_1.set_action(FlightActionLand(
+            landing_height=self._start_pose_1.z
+        ))
+        if self._use_two_drones:
+            self._flight_service_2.set_action(FlightActionLand(
+                landing_height=self._start_pose_2.z
+            ))
+        # TODO: add proper function to wait until landing is complete
+        if self._wait(100): return

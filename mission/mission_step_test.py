@@ -79,5 +79,6 @@ class MissionStepTest(MissionBase):
             self._flight_service_2.set_action(FlightActionLand(
                 landing_height=self._start_pose_2.z
             ))
-        # TODO: add proper function to wait until landing is complete
-        if self._wait(100): return
+        if self._flight_service_1.wait_for_action_handoff(self._stop_event): return
+        if self._use_two_drones:
+            if self._flight_service_2.wait_for_action_handoff(self._stop_event): return

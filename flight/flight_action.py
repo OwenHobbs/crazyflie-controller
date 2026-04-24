@@ -10,7 +10,7 @@ from mocap.mocap_client import Pose
 class FlightAction(ABC):
     def __init__(self):
         self._action_start_time: float | None = None
-        self._new_action: FlightAction | None = None
+        self._handoff_action: FlightAction | None = None
         self._drone_pose: Pose | None = None
         self._frame: dict[str, Pose] | None = None
         self._flight_runtime: float | None = None
@@ -37,14 +37,14 @@ class FlightAction(ABC):
         self._flight_runtime = flight_runtime
 
         if self._action_start_time is None:
-            self._action_start_time = time.time()
+            self._action_start_time = time.monotonic()
             self._action_runtime = 0
             # Run callback for initial execution
             self.on_initial_execution()
         else:
-            self._action_runtime = time.time() - self._action_start_time
+            self._action_runtime = time.monotonic() - self._action_start_time
 
-        return self.determine_goal(), self._new_action
+        return self.determine_goal(), self._handoff_action
 
 class FlightActionIdle(FlightAction):
     def determine_goal(self) -> Goal | None:
@@ -63,7 +63,7 @@ class FlightActionLand(FlightAction):
         self,
         landing_height: float = 0.0,
         descent_rate: float = 0.05,
-        touchdown_tolerance: float = 0.05,
+        touchdown_tolerance: float = 0.02,
     ):
         super().__init__()
         self._landing_height = landing_height
@@ -77,7 +77,7 @@ class FlightActionLand(FlightAction):
     def determine_goal(self) -> Goal | None:
         # Check if we are at landing height
         if self._drone_pose.z <= self._landing_height + self._touchdown_tolerance:
-            self._new_action = FlightActionIdle()
+            self._handoff_action = FlightActionIdle()
             return None
 
         target_z = max(

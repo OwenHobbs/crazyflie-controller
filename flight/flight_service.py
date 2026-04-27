@@ -9,8 +9,9 @@ from cflib.utils import uri_helper
 from crazyflie.crazyflie_client import CrazyflieClient
 from crazyflie.crazyflie_telemetry import CrazyflieTelemetry
 from mocap.mocap_client import MocapClient
+from .flight_action import FlightAction, FlightActionIdle
 
-from .flight_control import ControlCommand, Goal, PIDGains, PIDPositionController
+from .flight_control import ControlCommand, PIDGains, PIDPositionController
 from .flight_logger import FlightLogger
 
 """
@@ -23,7 +24,7 @@ packages to coordinate tracking data, PID control, and command execution.
 class FlightService:
     """Owns the background mocap/control/send loop.
 
-    Main (or any other thread) only needs to call set_goal().
+    Main (or any other thread) only needs to call set_action().
     """
 
     # Initialize the flight service with drone and mocap configuration
@@ -44,9 +45,9 @@ class FlightService:
         self.drone_object_name = drone_object_name
         self._telemetry_client = CrazyflieTelemetry(self._cf_client.cf)
 
-        self._goal_lock = threading.Lock()
+        self._action_lock = threading.Lock()
         self._state_lock = threading.Lock()
-        self._goal: Optional[Goal] = None
+        self._action: FlightAction = FlightActionIdle()
         self._latest_frame: dict | None = None
         self._latest_runtime: float = 0.0
         self._last_command: Optional[ControlCommand] = None
@@ -55,6 +56,7 @@ class FlightService:
         self._start_time: float | None = None
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
+        self._action_handoff_event = threading.Event()
         self._started = False
 
     # Start the flight service and background control loop
@@ -76,17 +78,21 @@ class FlightService:
         self._cf_client.unlock_thrust_protection()
 
         self._stop_event.clear()
-        self._start_time = time.time()
+        self._action_handoff_event.clear()
+        self._start_time = time.monotonic()
         self._thread = threading.Thread(target=self._run_loop, name=f'{self.drone_object_name}_Service', daemon=True)
         self._thread.start()
         self._started = True
 
     # Stop the flight service and close connections
     def stop(self) -> None:
+        # TODO: could monitor this flag in the run loop to make this stop function non-blocking
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=2.0)
 
+        # TODO: make this code execute in run loop thread after flag is set
+        # TODO: could also add auto land feature
         try:
             self._cf_client.stop()
         finally:
@@ -96,20 +102,40 @@ class FlightService:
             self._cf_client.close()
             self._started = False
 
-    # Set a new control goal for the drone
-    def set_goal(self, goal: Goal) -> None:
-        with self._goal_lock:
-            self._goal = goal
+    # Set a new control action for the drone
+    def set_action(self, action: FlightAction) -> None:
+        with self._action_lock:
+            self._action_handoff_event.clear()
+            self._action = action
 
-    # Clear the current control goal
-    def clear_goal(self) -> None:
-        with self._goal_lock:
-            self._goal = None
+    # Get the current control action
+    def get_action(self) -> FlightAction:
+        with self._action_lock:
+            return self._action
 
-    # Get the current control goal
-    def get_goal(self) -> Optional[Goal]:
-        with self._goal_lock:
-            return self._goal
+    def wait_for_action_handoff(
+            self,
+            external_stop_event: threading.Event | None = None,
+            timeout: float | None = None,
+    ) -> bool:
+        start_time = time.monotonic()
+
+        while True:
+            if external_stop_event is not None and external_stop_event.is_set():
+                return True # indicate cancellation
+
+            if self._stop_event.is_set():
+                return True # indicate cancellation
+
+            wait_timeout = 0.1
+            if timeout is not None:
+                remaining = timeout - (time.monotonic() - start_time)
+                if remaining <= 0:
+                    return False # indicate timeout without cancellation
+                wait_timeout = min(wait_timeout, remaining)
+
+            if self._action_handoff_event.wait(wait_timeout):
+                return False # indicate action completed without cancellation
 
     # Get the latest motion capture frame
     def get_latest_frame(self) -> dict:
@@ -146,23 +172,17 @@ class FlightService:
                 continue
 
             frame_id, frame = result
+            # thread.lock not needed for self._last_seen_frame_id
+            # since it is not accessed by external threads
             self._last_seen_frame_id = frame_id
-
-            runtime = time.time() - self._start_time if self._start_time is not None else 0.0
-            drone_pose = frame.get(self.drone_object_name)
+            runtime = time.monotonic() - self._start_time if self._start_time is not None else 0.0
 
             with self._state_lock:
                 self._latest_frame = frame
                 self._latest_runtime = runtime
 
+            drone_pose = frame.get(self.drone_object_name)
             if drone_pose is None:
-                continue
-
-            with self._goal_lock:
-                goal = self._goal
-
-            if goal is None:
-                self._cf_client.send_setpoint(0.0, 0.0, 0.0, 0)
                 continue
 
             self._controller.add_sample(
@@ -172,6 +192,25 @@ class FlightService:
                 yaw=drone_pose.yaw,
                 timestamp=drone_pose.timestamp,
             )
+
+            # Determine goal based on flight action
+            with self._action_lock:
+                goal, handoff_action = self._action.execute(
+                    drone_pose=drone_pose,
+                    frame=frame,
+                    flight_runtime=runtime,
+                )
+                # Update the next action if applicable
+                if handoff_action is not None:
+                    self._action = handoff_action
+                    # Notify listeners to stop waiting
+                    self._action_handoff_event.set()
+                    # skip the current action and avoid killing drone
+                    continue
+
+            if goal is None:
+                self._cf_client.send_setpoint(0.0, 0.0, 0.0, 0)
+                continue
 
             command = self._controller.compute_command(goal)
 

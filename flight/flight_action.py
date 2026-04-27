@@ -152,6 +152,7 @@ class FlightActionMoveTo(FlightAction):
             heading=self._destination_goal.heading,
         )
 
+# TODO: This action has not been tested yet
 class FlightActionFollowAtOffset(FlightAction):
     def __init__(self, drone_object_name: str, distance: float):
         super().__init__()
@@ -159,10 +160,7 @@ class FlightActionFollowAtOffset(FlightAction):
         self._distance = distance
 
     def determine_goal(self) -> Goal | None:
-
         leader_pose = self._frame[self._drone_object_name]
-
-        # print(f'leader_pose: {leader_pose}')
         
         offset_x = self._distance * math.sin(leader_pose.yaw)
         offset_y = self._distance * math.cos(leader_pose.yaw) * -1

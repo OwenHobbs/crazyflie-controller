@@ -28,14 +28,6 @@ class MissionStepTest(MissionBase):
         self._start_pose_1 = None
         self._start_pose_2 = None
 
-    # TODO: move to parent class since this is a common function?
-    def _initialize_start_poses(self):
-        self._start_pose_1 = self._wait_for_start_pose(self._flight_service_1)
-        print(f'start_pose_1: {self._start_pose_1}')
-        if self._use_two_drones:
-            self._start_pose_2 = self._wait_for_start_pose(self._flight_service_2)
-            print(f'start_pose_2: {self._start_pose_2}')
-
     # Helper function to easily control both drones
     # Assumes start poses is already initialized
     def _move_relative_to_start_pose(
@@ -61,7 +53,22 @@ class MissionStepTest(MissionBase):
                 if self._flight_service_2.wait_for_action_handoff(self._stop_event): return
 
     def execute(self):
-        self._initialize_start_poses()
+        # Initialize start_pose_1
+        self._start_pose_1 = self._flight_service_1.get_latest_pose(self._flight_service_1.drone_object_name)
+        if self._start_pose_1 is None:
+            print(f'Unable to find start_pose_1: {self._flight_service_1.drone_object_name}')
+            return
+        else:
+            print(f'start_pose_1: {self._start_pose_1}')
+
+        # Initialize start_pose_2
+        if self._use_two_drones:
+            self._start_pose_2 = self._flight_service_2.get_latest_pose(self._flight_service_2.drone_object_name)
+            if self._start_pose_2 is None:
+                print(f'Unable to find start_pose_2: {self._flight_service_2.drone_object_name}')
+                return
+            else:
+                print(f'start_pose_2: {self._start_pose_2}')
 
         self._move_relative_to_start_pose(0, 0, TAKEOFF_HEIGHT, FLIGHT_HEADING_1)
         if self._wait(FLIGHT_DELAY): return

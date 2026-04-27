@@ -91,6 +91,67 @@ class FlightActionLand(FlightAction):
             heading=math.degrees(self._start_pose.yaw),
         )
 
+class FlightActionMoveTo(FlightAction):
+    def __init__(
+            self,
+            destination_goal: Goal,
+            xy_rate: float = 0.6,
+            xy_tolerance: float = 0.2,
+            z_rate: float = 0.4,
+            z_tolerance: float = 0.2
+    ):
+        super().__init__()
+        self._destination_goal: Goal = destination_goal
+        self._xy_rate = xy_rate
+        self._xy_tolerance = xy_tolerance
+        self._z_rate = z_rate
+        self._z_tolerance = z_tolerance
+        self._start_pose: Pose | None = None
+
+    def on_initial_execution(self):
+        self._start_pose = self._drone_pose
+
+    def determine_goal(self) -> Goal | None:
+        # Check if we are at destination
+        xy_error = math.hypot(
+            self._destination_goal.x - self._drone_pose.x,
+            self._destination_goal.y - self._drone_pose.y,
+        )
+        z_error = self._destination_goal.z - self._drone_pose.z
+        if xy_error <= self._xy_tolerance and abs(z_error) <= self._z_tolerance:
+            self._handoff_action = FlightActionHover(self._destination_goal)
+            return None
+
+        destination_dx = self._destination_goal.x - self._start_pose.x
+        destination_dy = self._destination_goal.y - self._start_pose.y
+        destination_xy_distance = math.hypot(destination_dx, destination_dy)
+
+        if destination_xy_distance > 0:
+            xy_distance_traveled = min(
+                destination_xy_distance,
+                self._xy_rate * self._action_runtime,
+            )
+            xy_progress = xy_distance_traveled / destination_xy_distance
+            target_x = self._start_pose.x + destination_dx * xy_progress
+            target_y = self._start_pose.y + destination_dy * xy_progress
+        else:
+            target_x = self._destination_goal.x
+            target_y = self._destination_goal.y
+
+        destination_dz = self._destination_goal.z - self._start_pose.z
+        z_distance_traveled = min(
+            abs(destination_dz),
+            self._z_rate * self._action_runtime,
+        )
+        target_z = self._start_pose.z + math.copysign(z_distance_traveled, destination_dz)
+
+        return Goal(
+            x=target_x,
+            y=target_y,
+            z=target_z,
+            heading=self._destination_goal.heading,
+        )
+
 class FlightActionFollowAtOffset(FlightAction):
     def __init__(self, drone_object_name: str, distance: float):
         super().__init__()

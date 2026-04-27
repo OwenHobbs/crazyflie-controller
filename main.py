@@ -7,6 +7,7 @@ from flight.flight_control import PIDGains
 from flight.flight_service import FlightService
 from mission.mission_follow_object_single import MissionFollowObjectSingle
 from mission.mission_step_test import MissionStepTest
+from mission.mission_user_input_single import MissionUserInputSingle
 from mocap.mocap_client import MocapClient
 
 """
@@ -77,16 +78,21 @@ def main() -> None:
     try:
         # TODO: Initialize desired mission here
 
-        MissionStepTest(
-            stop_event=stop_event,
-            flight_service_1=flight_service_1,
-            flight_service_2=flight_service_2
-        ).execute()
+        # MissionStepTest(
+        #     stop_event=stop_event,
+        #     flight_service_1=flight_service_1,
+        #     flight_service_2=flight_service_2
+        # ).execute()
 
         # MissionFollowObjectSingle(
         #     stop_event=stop_event,
         #     flight_service=flight_service_1,
         # ).execute()
+
+        MissionUserInputSingle(
+            stop_event=stop_event,
+            flight_service=flight_service_1,
+        ).execute()
     except KeyboardInterrupt:
         print('\nCtrl+C pressed, shutting down')
     finally:

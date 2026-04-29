@@ -5,6 +5,7 @@ import keyboard
 from crazyflie.crazyflie_client import CrazyflieClient
 from flight.flight_control import PIDGains
 from flight.flight_service import FlightService
+from mission.mission_dual_transport import MissionDualTransport
 from mission.mission_follow_object_single import MissionFollowObjectSingle
 from mission.mission_step_test import MissionStepTest
 from mission.mission_user_input_single import MissionUserInputSingle
@@ -89,9 +90,15 @@ def main() -> None:
         #     flight_service=flight_service_1,
         # ).execute()
 
-        MissionUserInputSingle(
+        # MissionUserInputSingle(
+        #     stop_event=stop_event,
+        #     flight_service=flight_service_1,
+        # ).execute()
+
+        MissionDualTransport(
             stop_event=stop_event,
-            flight_service=flight_service_1,
+            flight_service_1=flight_service_1,
+            flight_service_2=flight_service_2
         ).execute()
     except KeyboardInterrupt:
         print('\nCtrl+C pressed, shutting down')
